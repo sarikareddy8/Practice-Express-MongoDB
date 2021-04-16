@@ -1,65 +1,86 @@
 const express=require('express');
 const members=require('../Members');
 const router=express.Router();
+const connectDB=require('../config/database');
+const Employee=require("../models/employees");
+
+connectDB();
 
 //get employees
-router.get('/',(req,res)=>{
-    res.json(members);
+router.get('/',async (req,res)=>{
+    await Employee.find({},(err,data)=>{
+        if(err){
+            return err;
+        }
+       // res.json({members:data})
+       res.redirect("/employees");
+    })
 });
 
 //get employee by id
-router.get('/:id',(req,res)=>{
-    const found=members.some(member=>member.id==parseInt(req.params.id));
-    if(found){
-        res.status(200).json(members.filter(member=>member.id==parseInt(req.params.id)));
+router.get('/:name',async (req,res)=>{
+    try{
+        await Employee.findOne({name:req.params.name},(err,data)=>{
+            if(err){
+                return res.send(err);
+            }
+            if(data==null)
+            {
+                res.status(400).json({message:`${req.params.name} not found`});
+            }
+            else{
+                res.status(200).json({employee:data});
+            }
+            
+        });
     }
-    else{
-        res.status(400).json({message:`${req.params.id} not found`});
+    catch(err){
+       console.log(err);
     }
 });
 
 //create employee
 router.post('/',(req,res)=>{
-    if(!req.body.id || !req.body.name || !req.body.email || !req.body.status){
+    if(!req.body.name || !req.body.email || !req.body.status){
         res.status(400).json({message:"please provide all details"})
     }
     else{
-        members.push(req.body);
-        res.json(members);
+        const employee=new Employee({...req.body})
+         employee.save()
+         .then((data)=>{
+                res.redirect('/employees');
+         })
+         .catch((err)=>{
+             res.send(err);
+         });
+        
     }
 });
 
 //update an employee
-router.put('/:id',(req,res)=>{
-    const found=members.some(member=>member.id===parseInt(req.params.id));
-    if(found){
-        members.forEach(member=>{
-            if(member.id===parseInt(req.params.id))
-            {
-            member.name = req.body.name ? req.body.name : member.name;
-            member.email = req.body.email ? req.body.email : member.email;
-            member.id = req.body.id ? req.body.id : member.id;
-            member.status = req.body.status ? req.body.status : member.status;
-            }
-        });
-        res.json({members})
-    }
-    else{
-        res.status(400).json({message:`${req.params.id} not found`});
-    }
+router.put('/:name', (req,res)=>{
+    
+        Employee.updateOne({name:req.params.name},req.body)
+        .then(data=>{
+            res.json({data});
+        })
+        .catch(err=>{
+            res.status(400).json({err});
+        });  
 });
 
-//delete employee
-router.delete('/:id',(req,res)=>{
-    const found=members.some(member=>member.id==parseInt(req.params.id));
-    if(found){
-        
-       res.json({members: members.filter(member=>member.id!==parseInt(req.params.id))});
 
-    }
-    else{
-        res.status(400).json({message:`${req.params.id} not found`});
-    }
+
+//delete employee
+router.delete('/:name',(req,res)=>{
+    
+       Employee.findOneAndRemove({name:req.params.name})
+       .then(()=>{
+             res.json({message:"account deleted"})
+        })
+        .catch(err=>res.json({error:"not found"}))
+        
+   
 });
 
 module.exports=router;
