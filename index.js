@@ -1,10 +1,15 @@
 const express=require('express');
 const path=require('path');
-const members=require('./Members');
+//commented as members fetched from db
+//const members=require('./Members');
 const expressLayouts=require('express-ejs-layouts');
 const routes=require('./routes/api');
+const connectDB=require('./config/database');
 
+const employee=require("./models/employees");
 
+//connection
+connectDB();
 
 //init express
 const app=express();
@@ -29,8 +34,16 @@ app.get("/",(req,res)=>{
     res.render("welcome");
 });
 
-app.get("/employees",(req,res)=>{
-    res.render("list-employees",{title:"Welcome",members});
+app.get("/employees",async (req,res)=>{
+    await employee.find({},(err,data)=>{
+        if(err){
+            return err;
+        }
+       // res.json({members:data})
+       res.render("list-employees",{title:"Welcome",members:data});
+    })
+    
+   // res.render("list-employees",{title:"Welcome",members});
 });
 
 app.listen(5000,()=>console.log("server running at port 5000"));
